@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Identificação de Rosca</title>
+
+  <!-- Manifest (PWA) -->
+  <link rel="manifest" href="/static/manifest.json">
+
+  <!-- Ícones -->
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/static/icon-512.png">
+
+  <!-- Cor da barra do navegador -->
+  <meta name="theme-color" content="#007bff">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background: #f9f9f9;
+    }
+    h2 {
+      color: #333;
+      text-align: center;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .preview {
+      margin-top: 15px;
+      text-align: center;
+    }
+    img {
+      max-width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 5px;
+      background: #007bff;
+      color: white;
+      font-size: 16px;
+      width: 100%;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .resultado {
+      margin-top: 20px;
+      padding: 12px;
+      background: #eef;
+      border: 1px solid #99c;
+      border-radius: 5px;
+    }
+    .tipo-rosca {
+      margin-top: 15px;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Identificação de Rosca</h2>
+    <p>Posicione o cartão de crédito ao lado da rosca para referência.</p>
+
+    <!-- Input para abrir a câmera -->
+    <input type="file" id="cameraInput" accept="image/*" capture="environment">
+
+    <!-- Escolher tipo de rosca -->
+    <div class="tipo-rosca">
+      <label><input type="radio" name="tipo" value="true"> Rosca Interna (fêmea)</label><br>
+      <label><input type="radio" name="tipo" value="false" checked> Rosca Externa (macho)</label>
+    </div>
+
+    <button onclick="enviarFoto()">📸 Enviar Foto</button>
+
+    <!-- Exibe a imagem de instrução -->
+    <div class="preview">
+      <h3>Exemplo de foto correta:</h3>
+      <img src="/static/roscas_exemplo.png" alt="Exemplo de Rosca">
+    </div>
+
+    <!-- Exibe o resultado -->
+    <div id="resposta" class="resultado"></div>
+  </div>
+
+  <script>
+    async function enviarFoto() {
+      const input = document.getElementById("cameraInput");
+      if (!input.files.length) {
+        alert("Selecione uma foto primeiro!");
+        return;
+      }
+
+      // pega o valor do radio selecionado
+      const tipo = document.querySelector('input[name="tipo"]:checked').value;
+
+      const formData = new FormData();
+      formData.append("file", input.files[0]);
+      formData.append("interna", tipo);
+
+      try {
+        const response = await fetch("/analisar", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json();
+
+        document.getElementById("resposta").innerHTML = `
+          <strong>🔧 Tipo de rosca:</strong> ${data.tipo_rosca || "-"} <br>
+          <strong>📏 Diâmetro (mm):</strong> ${data.diametro_medido_mm || "-"} <br>
+          <strong>📌 Bitola:</strong> ${data.bitola || "-"} <br>
+          <strong>📖 Norma:</strong> ${data.norma || "-"} <br>
+          <strong>✅ Confiança:</strong> ${data.confianca || "-"} <br>
+          <strong>💡 Observações:</strong> ${data.observacao || data.erro}
+        `;
+      } catch (error) {
+        document.getElementById("resposta").innerText = "Erro: " + error;
+      }
+    }
+
+    // Registrar service worker (PWA)
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/static/sw.js")
+        .then(() => console.log("Service Worker registrado com sucesso."))
+        .catch(err => console.error("Erro ao registrar o Service Worker:", err));
+    }
+  </script>
+</body>
+</html>
